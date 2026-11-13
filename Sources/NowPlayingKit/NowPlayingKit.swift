@@ -111,6 +111,9 @@ public final class NowPlayingManager: @unchecked Sendable {
             throw NowPlayingError.unauthorized
         }
 
+        print("DEBUG: Playback state: \(player.playbackState.rawValue)")
+        print("DEBUG: Current item: \(String(describing: player.nowPlayingItem?.title))")
+
         guard let item = player.nowPlayingItem else {
             throw NowPlayingError.noCurrentEntry
         }
