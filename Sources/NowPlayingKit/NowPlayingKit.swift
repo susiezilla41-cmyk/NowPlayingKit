@@ -1,4 +1,3 @@
-
 import Combine
 import Foundation
 import MusicKit
@@ -44,6 +43,7 @@ public final class NowPlayingManager: @unchecked Sendable {
     private let player = MPMusicPlayerController.systemMusicPlayer
 
     @Published public private(set) var isPlaying = false
+    @Published public private(set) var debugStatus = "Waiting for playback information..."
 
     private let playbackStateSubject = PassthroughSubject<Bool, Never>()
 
@@ -53,6 +53,8 @@ public final class NowPlayingManager: @unchecked Sendable {
 
     private init() {
         isPlaying = player.playbackState == .playing
+        debugStatus = "Initial playback state: \(player.playbackState.rawValue)"
+
         player.beginGeneratingPlaybackNotifications()
         playbackStateSubject.send(isPlaying)
         setupNotificationObservers()
@@ -78,6 +80,8 @@ public final class NowPlayingManager: @unchecked Sendable {
     private func checkAndUpdatePlaybackState() {
         let currentState = player.playbackState == .playing
 
+        debugStatus = "Playback state: \(player.playbackState.rawValue)"
+
         if isPlaying != currentState {
             isPlaying = currentState
             playbackStateSubject.send(currentState)
@@ -89,6 +93,8 @@ public final class NowPlayingManager: @unchecked Sendable {
     }
 
     public func authorize() async -> MusicAuthorization.Status {
+        debugStatus = "Requesting music permissions..."
+
         let musicStatus = await MusicAuthorization.request()
 
         let mediaStatus: MPMediaLibraryAuthorizationStatus =
@@ -97,6 +103,8 @@ public final class NowPlayingManager: @unchecked Sendable {
                     continuation.resume(returning: status)
                 }
             }
+
+        debugStatus = "MusicKit: \(musicStatus). Media Library: \(mediaStatus.rawValue)"
 
         if mediaStatus == .authorized {
             checkAndUpdatePlaybackState()
@@ -108,15 +116,18 @@ public final class NowPlayingManager: @unchecked Sendable {
     public func getCurrentPlayback() async throws -> NowPlayingData {
         guard MusicAuthorization.currentStatus == .authorized,
               MPMediaLibrary.authorizationStatus() == .authorized else {
+            debugStatus = "ERROR: Music permission not authorized"
             throw NowPlayingError.unauthorized
         }
 
-        print("DEBUG: Playback state: \(player.playbackState.rawValue)")
-        print("DEBUG: Current item: \(String(describing: player.nowPlayingItem?.title))")
+        checkAndUpdatePlaybackState()
 
         guard let item = player.nowPlayingItem else {
+            debugStatus = "No current item detected by MediaPlayer"
             throw NowPlayingError.noCurrentEntry
         }
+
+        debugStatus = "Detected: \(item.title ?? "Unknown title") — \(item.artist ?? "Unknown artist")"
 
         return NowPlayingData(
             id: String(item.persistentID),
