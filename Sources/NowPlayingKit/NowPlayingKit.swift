@@ -37,7 +37,7 @@ public struct NowPlayingData: Sendable {
     }
 }
 
-public final class NowPlayingManager: @unchecked Sendable {
+public final class NowPlayingManager: ObservableObject, @unchecked Sendable {
     public static let shared = NowPlayingManager()
 
     private let player = MPMusicPlayerController.systemMusicPlayer
